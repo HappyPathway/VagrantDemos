@@ -1,0 +1,9 @@
+[mysqldump]
+quick
+quote-names
+max_allowed_packet      = 16M
+{{ with secret "security-in-depth/db-supersecret/creds/mysql_crud" }}
+user = {{ .Data.username }}
+password = {{ .Data.password }}
+{{ end }}
+

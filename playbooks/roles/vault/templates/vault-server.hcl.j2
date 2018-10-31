@@ -1,0 +1,10 @@
+listener "tcp" {
+  address     = "0.0.0.0:8200"
+  tls_disable = 1
+}
+backend "consul" {
+  address = "http://{{ host_addr }}:8500"
+  path    = "vault/"
+}
+
+ui = true

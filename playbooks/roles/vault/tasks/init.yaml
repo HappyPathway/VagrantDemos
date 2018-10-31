@@ -1,0 +1,66 @@
+---
+- name: restart vault
+  service: name=vault state=restarted
+
+- name: stat vault keys
+  stat: path=/vagrant/vault.keys
+  register: vault_keys
+
+- name: stat vault.token
+  stat: path=/vagrant/vault.token
+  register: vault_token
+
+- wait_for:
+    port: 8200
+    delay: 10
+
+- vault_init:
+  ignore_errors: yes
+  run_once: yes
+  when: not vault_keys.stat.exists
+
+- name: save vault keys
+  copy: dest=/vagrant/vault.keys content={{ vault_init.vault_keys }}
+  run_once: true
+  when: not vault_keys.stat.exists
+
+- vault_unseal: key="{{ item }}"
+  with_items: "{{ vault_init.vault_keys }}"
+  when: not vault_keys.stat.exists
+
+- name: load vault_license
+  shell: cat {{ vault_license }}
+  register: license
+  when: vault_license is defined
+  run_once: yes
+
+- vault_secret: mode=write path=/sys/license var=text value={{ license.stdout }} vault_token={{ vault_init.root_token }} vault_addr=http://localhost:8200
+  when: vault_license is defined and not vault_keys.stat.exists
+  run_once: yes
+
+- name: save vault token
+  copy: dest=/vagrant/vault.token content={{ vault_init.root_token }}
+  run_once: true
+  when: not vault_token.stat.exists
+
+- vault_status:
+  run_once: true
+  register: status
+  ignore_errors: yes
+
+- debug: msg="{{ vault_status }}"
+  run_once: true
+  when: status.rc == 0
+
+- name: set vault token
+  set_fact: vault_token={{ vault_init.root_token }}
+  when: not vault_token.stat.exists
+
+- name: set vault_addr
+  set_fact: vault_addr=http://vagrant.hashidemos.io:8200
+  when: not vault_token.stat.exists
+
+- name: setup vault env
+  template: src=vault.sh.j2 dest=/vagrant/vault.env
+  when: not vault_token.stat.exists
+

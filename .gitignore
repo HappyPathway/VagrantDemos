@@ -1,0 +1,7 @@
+vault.keys
+vault.license
+vault.token
+.vagrant
+.vscode
+*.log
+tools

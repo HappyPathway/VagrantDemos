@@ -1,0 +1,23 @@
+---
+# tasks file for vault-mysql
+- name: install tools
+  apt: name={{ item }} state=installed
+  with_items:
+    - phpmyadmin
+    - mysql-client
+
+- name: configure mysql template
+  copy: src=files/mysql.hcl dest=/etc/consul-template/conf.d/mysql.hcl
+  notifies: restart supervisor
+
+- name: upload mysql template
+  copy: src=files/mysql.ctmpl dest=/etc/consul-template/templates/mysql.ctmpl
+  notifies: restart supervisor
+
+- name: configure mysqldump template
+  copy: src=files/mysqldump.hcl dest=/etc/consul-template/conf.d/mysqldump.hcl
+  notifies: restart supervisor
+
+- name: upload mysqldump template
+  copy: src=files/mysqldump.ctmpl dest=/etc/consul-template/templates/mysqldump.ctmpl
+  notifies: restart supervisor

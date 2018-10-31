@@ -1,0 +1,47 @@
+#!/usr/bin/env python
+import json
+import subprocess
+import shlex
+import os
+from tempfile import NamedTemporaryFile as ntf
+from collections import defaultdict
+import re
+
+
+def unseal(key):
+    p = subprocess.Popen(
+        shlex.split("vault operator unseal {0}".format(key)), 
+        stdout=subprocess.PIPE, 
+        stderr=subprocess.PIPE
+    )
+    out, err = p.communicate()
+    if p.returncode > 0:
+        return dict(rc=p.returncode, failed=True, msg=str(err), changed=False)
+    else:
+        return dict(rc=p.returncode, success=True, msg=str(out), changed=True)
+
+def main():
+    module = AnsibleModule(
+        argument_spec=dict(
+            vault_addr=dict(required=False, default="http://localhost:8200"),
+            vault_token=dict(required=False),
+            vault_skip_verify=dict(required=False),
+            key = dict(required=True)
+        )
+    )
+
+    for k, v in {k: v for k, v in module.params.items() if 'vault' in k}.items():
+        if v:
+            os.environ[k.upper()] = v
+
+    ret = unseal(module.params.get('key'))
+    if ret.get('rc') > 0:
+        module.fail_json(**ret)
+    else:
+        module.exit_json(**ret)
+
+
+
+from ansible.module_utils.basic import AnsibleModule
+if __name__ == '__main__':
+    main()

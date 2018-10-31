@@ -1,0 +1,9 @@
+---
+# defaults file for vault_okta
+okta_url: okta.com
+okta_org: HappyPathway
+okta_group_mapping: 
+  - group_name: VaultAdmin
+    policy_name: admin
+
+okta_user_mapping: []

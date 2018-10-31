@@ -1,0 +1,38 @@
+# This denotes the start of the configuration section for Consul. All values
+# contained in this section pertain to Consul.
+consul {
+  address = "{{ consul_addr }}"
+  retry {
+    enabled = true
+    attempts = 12
+    backoff = "250ms"
+    max_backoff = "1m"
+  }
+
+}
+
+reload_signal = "SIGHUP"
+kill_signal = "SIGINT"
+max_stale = "10s"
+log_level = "debug"
+pid_file = "/tmp/consul-template.pid"
+wait {
+  min = "1s"
+  max = "10s"
+}
+
+vault {
+  address = "{{ vault_addr }}"
+  grace = "1s"
+  token = "{{ vault_token }}"
+  unwrap_token = false
+  renew_token = false
+
+}
+
+# This block defines the configuration for connecting to a syslog server for
+# logging.
+syslog {
+  enabled = false
+  facility = "LOCAL5"
+}

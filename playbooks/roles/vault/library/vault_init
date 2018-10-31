@@ -1,0 +1,56 @@
+#!/usr/bin/env python
+import json
+import subprocess
+import shlex
+import os
+from tempfile import NamedTemporaryFile as ntf
+from collections import defaultdict
+import re
+
+
+def parse_init(init_output):
+    init_data = dict()
+    init_data['vault_keys'] = list()
+    root_token_regex = re.compile(r"Initial Root Token: (?P<token>.*)$")
+    unseal_key_regex = re.compile(r"Unseal Key \d+: (?P<key>.*)$")
+    for line in init_output.splitlines():
+        root_token = root_token_regex.search(line)
+        if root_token:
+            init_data['root_token'] = root_token.group('token')
+        unseal_key = unseal_key_regex.search(line)
+        if unseal_key:
+            init_data['vault_keys'].append(unseal_key.group('key'))
+    return init_data
+
+
+def main():
+    module = AnsibleModule(
+        argument_spec=dict(
+            vault_addr=dict(required=False, default="http://localhost:8200"),
+            vault_token=dict(required=False),
+            vault_skip_verify=dict(required=False),
+        )
+    )
+
+    for k, v in {k: v for k, v in module.params.items() if 'vault' in k}.items():
+        if v:
+            os.environ[k.upper()] = v
+
+    p = subprocess.Popen(shlex.split("vault operator init"), 
+    stdout=subprocess.PIPE, 
+    stderr=subprocess.PIPE)
+    out, err=p.communicate()
+    if p.returncode > 0:
+        module.fail_json(changed=False, msg=str(err))
+    else:
+        module.exit_json(change=True, 
+                            ansible_facts=dict(
+                                vault_init=parse_init(out)
+                            )
+                        )
+
+
+
+from ansible.module_utils.basic import AnsibleModule
+if __name__ == '__main__':
+    main()
