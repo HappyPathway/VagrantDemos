@@ -1,0 +1,74 @@
+#!/usr/bin/env python
+import hvac
+import os
+import json
+
+class VaultDataException(Exception): pass
+
+def main():
+    module = AnsibleModule(
+        argument_spec = dict(
+            key=dict(required=False),
+            value=dict(required=False),
+            vault_json=dict(required=False),
+            vault_file=dict(required=False, type='path'),
+            path = dict(required=False),
+            vault_addr = dict(required=False),
+            vault_token = dict(required=False),
+            vault_skip_verify = dict(required=False),
+        )
+    )
+    try:
+        path = module.params.get("path")
+        key = module.params.get("key")
+        value = module.params.get("value")
+        _json = module.params.get("vault_json")
+        _file = module.params.get("vault_file")
+        for k, v in module.params.items():
+            if 'vault' in k:
+                if v:
+                    os.environ[k.upper()] = v
+        try:
+            client = hvac.Client(
+                url=os.environ.get('VAULT_ADDR'), 
+                token=os.environ.get('VAULT_TOKEN')
+            )
+        except Exception as e:
+            raise VaultDataException(str(e))
+    
+        try:
+            if value:
+                d = dict()
+                d[key] = value
+                data = client.write(path, **d)
+                return_data = dict()
+                return_data[key] = data
+                module.exit_json(changed=True, ansible_facts=return_data)
+
+            elif _json:
+                data = json.loads(_json)
+                data = client.write(path, **data)
+                module.exit_json(changed=True, **data.get("data"))
+
+            elif _file:
+                with open(_file, 'r') as v_file:
+                    data = client.write(path, **json.loads(v_file.read()))
+                    if data:
+                        module.exit_json(changed=True, **data)
+                    else:
+                        module.exit_json(changed=True)
+
+            else:
+                data = client.read(path)
+                module.exit_json(changed=True, **data)
+
+        except Exception as e:
+            raise VaultDataException(str(e))
+
+    except Exception as e:
+        module.fail_json(msg=str(e))
+
+
+from ansible.module_utils.basic import AnsibleModule
+if __name__ == '__main__':
+    main()

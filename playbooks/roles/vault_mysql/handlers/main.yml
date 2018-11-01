@@ -1,0 +1,4 @@
+---
+# handlers file for vault-mysql
+- name: restart supervisor
+  service: name=supervisor state=restarted

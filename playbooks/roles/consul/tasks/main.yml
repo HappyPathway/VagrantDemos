@@ -1,0 +1,36 @@
+---
+# tasks file for consul
+- name: copy service definition
+  copy: src=consul.service dest=/etc/systemd/system/consul.service
+
+- name: mkdir /etc/consul.d
+  file: path=/etc/consul.d state=directory
+
+- name: cat /etc/hostaddr
+  shell: cat /etc/hostaddr
+  register: hostaddr
+
+- name: set hostaddr
+  set_fact: host_addr="{{ hostaddr.stdout }}"
+
+- name: copy consul config
+  template: src=consul-default.json.j2 dest=/etc/consul.d/consul-default.json
+
+- name: service consul start
+  service: name=consul state=restarted
+
+- name: consul join
+  shell: /usr/local/bin/consul join {{ item }}:8301
+  with_items: "{{ hashihosts }}"
+  ignore_errors: yes
+  environment:
+    CONSUL_HTTP_ADDR: "{{ host_addr }}:8500"
+
+- name: install dnsmasq
+  apt: name=dnsmasq state=installed
+
+- name: setup dnsmasq
+  copy: src=10-consul dest=/etc/dnsmasq.d/10-consul
+
+- name: restart dnsmasq
+  service: name=dnsmasq state=restarted

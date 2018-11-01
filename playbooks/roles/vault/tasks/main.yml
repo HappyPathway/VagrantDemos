@@ -1,0 +1,23 @@
+---
+# tasks file for vault
+- name: mkdir /etc/vault.d
+  file: path=/etc/vault.d state=directory
+
+- name: copy vault config
+  template: src=vault-server.hcl.j2 dest=/etc/vault.d/vault-server.hcl
+
+- name: copy service definition
+  copy: src=vault.service dest=/etc/systemd/system/vault.service
+
+- name: start vault
+  service: name=vault state=started
+
+- name: cat /etc/hostaddr
+  shell: cat /etc/hostaddr
+  register: hostaddr
+
+- name: set hostaddr
+  set_fact: host_addr="{{ hostaddr.stdout }}"
+  
+- include: init.yaml
+  

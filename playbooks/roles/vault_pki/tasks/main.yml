@@ -1,0 +1,96 @@
+---
+# tasks file for vault-pki
+- name: setup pki secrets enging
+  ignore_errors: true
+  delegate_to: localhost
+  become: no
+  vault_secrets_engine: 
+    mount_point: "{{ mount_point }}"
+    engine_type: pki
+    vault_addr: "{{ vault_addr }}"
+    vault_token: "{{ vault_token }}"
+
+- name: setup root CA
+  delegate_to: localhost
+  become: no
+  template: 
+    src: ca_cert.json.j2 
+    dest: /tmp/ca_cert.json
+    
+
+- name: configure ca certificate
+  delegate_to: localhost
+  become: no
+  when: generate_root
+  vault_data: 
+    path: "{{ mount_point }}/root/generate/internal"
+    vault_file: /tmp/ca_cert.json
+    vault_addr: "{{ vault_addr }}"
+    vault_token: "{{ vault_token }}"
+
+- name: setup URLs
+  delegate_to: localhost
+  become: no
+  template: 
+    src: urls.json.j2 
+    dest: /tmp/urls.json
+
+- name: configure urls
+  delegate_to: localhost
+  become: no
+  vault_data: 
+    path: "{{ mount_point }}/config/urls"
+    vault_file: /tmp/urls.json
+    vault_addr: "{{ vault_addr }}"
+    vault_token: "{{ vault_token }}"
+
+- name: setup role
+  delegate_to: localhost
+  become: no
+  template: 
+    src: role.json.j2 
+    dest: /tmp/role.json
+
+- name: configure role
+  delegate_to: localhost
+  become: no
+  vault_data: 
+    path: "{{ mount_point }}/roles/{{ role }}"
+    vault_file: /tmp/role.json
+    vault_addr: "{{ vault_addr }}"
+    vault_token: "{{ vault_token }}"
+
+- name: get ssl certs
+  register: keys
+  delegate_to: localhost
+  become: no
+  vault_data:
+    path: "{{ mount_point }}/issue/{{ role }}"
+    key: common_name
+    value: "{{ server_name }}"
+    vault_addr: "{{ vault_addr }}"
+    vault_token: "{{ vault_token }}"
+
+
+- name: download nginx keys
+  apt_key:
+    url: http://nginx.org/keys/nginx_signing.key
+
+- apt_repository:
+    repo: deb http://nginx.org/packages/mainline/ubuntu/ xenial nginx
+    state: present
+
+- name: install nginx
+  apt: update_cache=yes name=nginx state=installed
+  
+- name: setup certificate
+  copy: dest=/etc/nginx/cert.crt content={{ common_name.data.certificate }} mode=0600 owner=root
+
+- name: setup private key
+  copy: dest=/etc/nginx/cert.key content={{ common_name.data.private_key }} mode=0600 owner=root
+
+- name: setup nginx proxy
+  template: src=nginx.conf.j2 dest=/etc/nginx/conf.d/default.conf
+
+- name: startup nginx
+  service: name=nginx state=restarted

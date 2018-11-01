@@ -1,0 +1,12 @@
+---
+# defaults file for vault-pki
+ttl: 8760h
+common_name: hashidemos.io
+server_name: vagrant.hashidemos.io
+mount_point: pki
+role: vault-demo
+issuing_certificates: "{{ vault_addr }}/v1/{{ mount_point}}/ca"
+crl_distribution_points: "{{ vault_addr }}/v1/{{ mount_point}}/crl"
+allow_subdomains: true
+role_max_ttl: 76h
+generate_root: true

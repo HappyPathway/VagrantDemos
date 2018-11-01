@@ -1,0 +1,7 @@
+{{ with secret "security-in-depth/db-supersecret/creds/mysql_crud" }}
+[mysql]
+user = {{ .Data.username }}
+password = {{ .Data.password }}
+{{ end }}
+host = {{ key "security-in-depth/supersecret/host" }}
+port = {{ key "security-in-depth/supersecret/port" }}

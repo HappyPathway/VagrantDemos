@@ -1,0 +1,10 @@
+{
+    "data_dir": "/opt/consul",
+    "bind_addr": "{{ host_addr }}",
+    "client_addr": "0.0.0.0",
+    "log_level": "INFO",
+    "server": true,
+    "advertise_addr": "{{ host_addr }}",
+    "node_name": "{{ inventory_hostname }}",
+    "bootstrap_expect": 3
+}

@@ -1,0 +1,66 @@
+#!/usr/bin/env python
+import hvac
+import os
+
+class VaultSSHException(Exception): pass
+
+def main():
+    module = AnsibleModule(
+        argument_spec = dict(
+            key_path = dict(required=True),
+            ssh_mount = dict(required=True),
+            signed_key_path = dict(required=True),
+            ssh_profile = dict(required=True),
+            vault_addr = dict(required=False),
+            vault_token = dict(required=False),
+            vault_skip_verify = dict(required=False),
+        )
+    )
+    try:
+        vault_response = dict()
+        for k, v in module.params.items():
+            if 'vault' in k:
+                if v:
+                    os.environ[k.upper()] = v
+        try:
+            client = hvac.Client(
+                url=os.environ.get('VAULT_ADDR'), 
+                token=os.environ.get('VAULT_TOKEN')
+            )
+        except Exception, e:
+            raise VaultSSHException(str(e))
+    
+        try:
+            with open(module.params.get("key_path"), "r") as key_data_file:
+                key_data = key_data_file.read()
+        except Exception, e:
+            raise VaultSSHException(str(e))
+    
+        try:
+            vault_response = client.write("{0}/sign/{1}".format(
+                    module.params.get("ssh_mount"),
+                    module.params.get("ssh_profile")
+                ), 
+                public_key=key_data
+            )
+            data = vault_response.get("data")
+            signed_key = data.get("signed_key")
+        except Exception, e:
+            raise VaultSSHException(str(e))
+    
+        try:
+            with open(module.params.get("signed_key_path"), "w") as signed_key_file:
+                signed_key_file.write(signed_key)
+        except Exception, e:
+            raise VaultSSHException(str(e))
+        if vault_response:
+            if "data" in vault_response:
+                vault_response.pop("data")
+            module.exit_json(changed=True, ansible_facts=dict(vault_ssh=vault_response))
+    except VaultSSHException, e:
+        module.fail_json(msg=str(e))
+
+
+from ansible.module_utils.basic import AnsibleModule
+if __name__ == '__main__':
+    main()

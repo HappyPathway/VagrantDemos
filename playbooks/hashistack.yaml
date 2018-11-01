@@ -1,0 +1,106 @@
+---
+- hosts: all
+  become: yes
+  vars:
+    hashihosts:
+      - 192.168.77.21
+      - 192.168.77.22
+      - 192.168.77.23
+
+    consul_oss_download_url: https://releases.hashicorp.com/consul/1.4.0-rc1/consul_1.4.0-rc1_linux_amd64.zip
+    consul_ent_download_url: https://releases.hashicorp.com/consul/1.4.0-rc1/consul_1.4.0-rc1_linux_amd64.zip
+    terraform_download_url: https://releases.hashicorp.com/terraform/0.11.10/terraform_0.11.10_linux_amd64.zip
+    vault_ent_download_url: https://s3-us-west-2.amazonaws.com/hc-enterprise-binaries/vault/ent/0.11.4/vault-enterprise_0.11.4%2Bent_linux_amd64.zip
+    vault_oss_download_url: https://releases.hashicorp.com/vault/0.11.4/vault_0.11.4_linux_amd64.zip
+    consul_template_download_url: https://releases.hashicorp.com/consul-template/0.19.5/consul-template_0.19.5_linux_amd64.zip
+
+  pre_tasks:
+    - name: set hostname
+      hostname: name={{ inventory_hostname }}
+
+    - name: install apt packages
+      apt: name="{{ item }}"
+      with_items: 
+        - supervisor
+        - python-dev 
+        - python-setuptools
+        - python 
+        - wget 
+        - unzip
+
+    - name: get-pip
+      shell: curl https://bootstrap.pypa.io/get-pip.py | python
+
+    - name: configure supervisor
+      copy: src=files/supervisord.conf dest=/etc/supervisor/conf.d/consul_template.conf
+      notifies: restart supervisor
+
+    - name: download binaries
+      when: install == "oss"
+      unarchive: 
+        src: "{{ item }}" 
+        dest: /usr/local/bin
+        remote_src: true
+      with_items:
+        - "{{ consul_oss_download_url }}"
+        - "{{ vault_oss_download_url }}"
+        - "{{ consul_template_download_url }}"
+        - "{{ terraform_download_url }}"
+    
+    - name: create tools directory
+      file: path=/vagrant/tools state=directory
+      
+    - name: download binaries
+      when: install == "enterprise"
+      creates: /vagrant/tools/{{ item|basename }}
+      run_once: yes
+      unarchive: 
+        src: "{{ item }}" 
+        dest: /vagrant/tools
+        remote_src: true
+      with_items:
+        - "{{ consul_ent_download_url }}"
+        - "{{ vault_ent_download_url }}"
+        - "{{ consul_template_download_url }}"
+        - "{{ terraform_download_url }}"
+    
+    - name: symlink tools
+      file: src={{ item }} path=/usr/local/bin/{{ item|basename }} state=link
+      with_items:
+        - /vagrant/tools/consul-template
+        - /vagrant/tools/vault
+        - /vagrant/tools/terraform
+        - /vagrant/tools/consul
+
+    - name: create consul user
+      user: name=consul
+
+    - name: set execute on consul binaries
+      file: mode=0755 state=file path=/usr/local/bin/{{ item }}
+      with_items:
+        - consul-template
+        - consul
+        - vault
+
+    - name: creat consul directory
+      file: path="{{ item }}" state=directory owner=consul 
+      with_items:
+        - /etc/consul-template/conf.d
+        - /etc/consul-template/templates
+
+    - name: configure consul-template
+      template: src=templates/consul-template.j2 dest=/etc/consul-template/conf.d/config.cfg
+
+  roles:
+    # - consul
+    # - vault
+    - terraform
+    - vault_ssh_client
+    - vault_aws
+    - vault_mysql
+    - vault_pki
+    - vault_okta
+
+  tasks:
+    - name: restart supervisor
+      service: name=supervisor state=restarted

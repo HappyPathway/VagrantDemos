@@ -1,0 +1,15 @@
+---
+# tasks file for vault-aws
+- name: install - python-boto
+  apt: name=python-boto state=installed
+  
+- name: configure aws credentials template
+  copy: src=files/aws.hcl dest=/etc/consul-template/conf.d/aws.hcl
+  notifies: restart supervisor
+
+- name: upload aws credentials template
+  copy: src=files/aws.ctmpl dest=/etc/consul-template/templates/aws.ctmpl
+  notifies: restart supervisor
+
+- name: create /home/vagrant/.aws directory
+  file: path=/home/vagrant/.aws state=directory owner=vagrant

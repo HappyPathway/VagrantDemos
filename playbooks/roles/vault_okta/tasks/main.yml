@@ -1,0 +1,39 @@
+---
+# tasks file for vault_okta
+- name: setup okta authentication
+  ignore_errors: true
+  vault_auth_backend: 
+    mount_point: okta 
+    backend_type: okta
+    vault_addr: "{{ vault_addr }}"
+    vault_token: "{{ vault_token }}"
+
+- name: setup okta account
+  template: src=okta_config.json.j2 dest=/tmp/okta_config.json
+
+- name: configure okta account
+  vault_data: 
+    path: auth/okta/config 
+    vault_file: /tmp/okta_config.json
+    vault_addr: "{{ vault_addr }}"
+    vault_token: "{{ vault_token }}"
+
+
+- name: setup okta groups
+  with_items: "{{ okta_group_mapping }}"
+  vault_data:
+    key: policies
+    path: auth/okta/groups/{{ item.group_name }}
+    value: "{{ item.policy_name }}"
+    vault_addr: "{{ vault_addr }}"
+    vault_token: "{{ vault_token }}"
+
+
+- name: setup okta users
+  with_items: "{{ okta_user_mapping }}"
+  vault_data:
+    key: groups
+    value: "{{ item.group_name }}"
+    path: auth/okta/users/{{ item.user_name }}
+    vault_addr: "{{ vault_addr }}"
+    vault_token: "{{ vault_token }}"
