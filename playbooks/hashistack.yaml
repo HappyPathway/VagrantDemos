@@ -23,7 +23,7 @@
       with_items: 
         - supervisor
         - python-dev 
-        - python-setuptools 
+        - python-setuptools
         - python 
         - wget 
         - unzip
@@ -92,10 +92,15 @@
       template: src=templates/consul-template.j2 dest=/etc/consul-template/conf.d/config.cfg
 
   roles:
-    - consul
-    - vault
+    # - consul
+    # - vault
+    - terraform
     - vault_ssh_client
     - vault_aws
     - vault_mysql
     - vault_pki
     - vault_okta
+
+  tasks:
+    - name: restart supervisor
+      service: name=supervisor state=restarted

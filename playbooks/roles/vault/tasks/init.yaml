@@ -1,7 +1,4 @@
 ---
-- name: restart vault
-  service: name=vault state=restarted
-
 - name: stat vault keys
   stat: path=/vagrant/vault.keys
   register: vault_keys
@@ -9,6 +6,10 @@
 - name: stat vault.token
   stat: path=/vagrant/vault.token
   register: vault_token
+
+- name: restart vault
+  service: name=vault state=restarted
+  when: not vault_keys.stat.exists
 
 - wait_for:
     port: 8200
@@ -52,13 +53,16 @@
   run_once: true
   when: status.rc == 0
 
-- name: set vault token
-  set_fact: vault_token={{ vault_init.root_token }}
-  when: not vault_token.stat.exists
+- name: cat vault_token
+  shell: cat {{ playbook_dir }}/vault.token
+  register: vault_token
 
+- name: set vault token
+  set_fact: vault_token={{ vault_token.stdout }}
+  
 - name: set vault_addr
   set_fact: vault_addr=http://vagrant.hashidemos.io:8200
-  when: not vault_token.stat.exists
+  
 
 - name: setup vault env
   template: src=vault.sh.j2 dest=/vagrant/vault.env

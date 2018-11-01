@@ -26,7 +26,7 @@
   vault_ssh_sign_key: 
     vault_addr: "{{ vault_addr }}"
     vault_token: "{{ vault_token }}"
-    key_path:  "/home/vagrant/.ssh/id_rsa.pub"
+    key_path:  "{{ lookup('env', 'HOME') }}/.ssh/id_rsa.pub"
     ssh_mount: ssh-{{ env }}
     ssh_profile: root 
-    signed_key_path: "/home/vagrant/.ssh/id_rsa-cert.pub"
+    signed_key_path: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa-cert.pub"

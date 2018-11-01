@@ -6,6 +6,7 @@
     - python3
     - python3-pip 
     - ipython3 
+    - ipython
     - ipython3-notebook
 
 - name: install pip
@@ -18,17 +19,8 @@
     executable: /usr/local/bin/pip
     name: tfe
 
-- name: install tfe-backup
-  pip:
+- name: install boto
+  pip: 
     executable: /usr/local/bin/pip
-    name: tfe-backup
-
-
-- name: download binaries
-  when: install == "enterprise"
-  unarchive: 
-    src: "{{ download_url }}" 
-    dest: /usr/local/bin
-    remote_src: true
-
+    name: boto
   
